@@ -12,7 +12,7 @@ def create_sources_string(source_urls: Set[str]) -> str:
     sources_list.sort()
     sources_string = "sources:\n"
     for i, source in enumerate(sources_list):
-        source = source.replace("https://","")
+        source = source.replace("https://","",1)
         sources_string += f"{i+1}. {source}\n"
     return sources_string
 
