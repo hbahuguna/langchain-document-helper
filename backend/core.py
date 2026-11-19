@@ -7,17 +7,42 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.vectorstores import Pinecone
 import pinecone
 
-
-pinecone.init(
-    api_key=os.environ["PINECONE_API_KEY"],
-    environment=os.environ["PINECONE_ENVIRONMENT_REGION"],
-)
-
 INDEX_NAME = "langchain-doc-index"
+_PINECONE_INITIALIZED = False
+
+
+def _init_pinecone() -> None:
+    global _PINECONE_INITIALIZED
+    if _PINECONE_INITIALIZED:
+        return
+
+    api_key = os.environ.get("PINECONE_API_KEY")
+    environment = os.environ.get("PINECONE_ENVIRONMENT_REGION")
+    missing = [
+        name
+        for name, value in [
+            ("PINECONE_API_KEY", api_key),
+            ("PINECONE_ENVIRONMENT_REGION", environment),
+        ]
+        if not value
+    ]
+    if missing:
+        raise RuntimeError(
+            "Missing required environment variable(s): " + ", ".join(missing)
+        )
+
+    pinecone.init(api_key=api_key, environment=environment)
+    _PINECONE_INITIALIZED = True
 
 
 def run_llm(query: str, chat_history: List[Dict[str, Any]] = []):
-    embeddings = OpenAIEmbeddings(openai_api_key=os.environ["OPENAI_API_KEY"])
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise RuntimeError("Missing required environment variable: OPENAI_API_KEY")
+
+    _init_pinecone()
+
+    embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
     docsearch = Pinecone.from_existing_index(
         embedding=embeddings,
         index_name=INDEX_NAME,
@@ -25,6 +50,7 @@ def run_llm(query: str, chat_history: List[Dict[str, Any]] = []):
     chat = ChatOpenAI(
         verbose=True,
         temperature=0,
+        openai_api_key=openai_api_key,
     )
 
     qa = ConversationalRetrievalChain.from_llm(

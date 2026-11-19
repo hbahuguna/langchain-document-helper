@@ -34,9 +34,13 @@ prompt = st.text_input("Prompt", placeholder="Enter your message here...") or st
 
 if prompt:
     with st.spinner("Generating response..."):
-        generated_response = run_llm(
-            query=prompt, chat_history=st.session_state["chat_history"]
-        )
+        try:
+            generated_response = run_llm(
+                query=prompt, chat_history=st.session_state["chat_history"]
+            )
+        except Exception as e:
+            st.error(f"Failed to generate response: {e}")
+            st.stop()
 
         sources = set(
             [doc.metadata["source"] for doc in generated_response["source_documents"]]
